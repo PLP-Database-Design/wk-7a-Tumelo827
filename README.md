@@ -61,3 +61,76 @@ Task:
 
 ---
 Good luck 🚀
+
+
+-- answers.sql
+-- SQL solutions for database normalization tasks
+
+/* 
+QUESTION 1: Converting to First Normal Form (1NF)
+The original ProductDetail table violates 1NF with multi-valued Products column.
+We'll create a new table with atomic values in each cell.
+*/
+
+-- Solution using STRING_SPLIT (for SQL Server)
+CREATE TABLE ProductDetail_1NF AS
+SELECT 
+    OrderID,
+    CustomerName,
+    TRIM(value) AS Product
+FROM ProductDetail
+CROSS APPLY STRING_SPLIT(Products, ',');
+
+-- Alternative solution for databases without STRING_SPLIT
+/*
+CREATE TABLE ProductDetail_1NF AS
+SELECT OrderID, CustomerName, 'Laptop' AS Product 
+FROM ProductDetail WHERE Products LIKE '%Laptop%'
+UNION ALL
+SELECT OrderID, CustomerName, 'Mouse' 
+FROM ProductDetail WHERE Products LIKE '%Mouse%'
+UNION ALL
+SELECT OrderID, CustomerName, 'Tablet' 
+FROM ProductDetail WHERE Products LIKE '%Tablet%'
+UNION ALL
+SELECT OrderID, CustomerName, 'Keyboard' 
+FROM ProductDetail WHERE Products LIKE '%Keyboard%'
+UNION ALL
+SELECT OrderID, CustomerName, 'Phone' 
+FROM ProductDetail WHERE Products LIKE '%Phone%';
+*/
+
+/*
+QUESTION 2: Converting to Second Normal Form (2NF)
+The OrderDetails table has partial dependency (CustomerName → OrderID).
+We'll eliminate partial dependencies by splitting into two tables.
+*/
+
+-- Create Orders table (removes partial dependency)
+CREATE TABLE Orders_2NF (
+    OrderID INT PRIMARY KEY,
+    CustomerName VARCHAR(100) NOT NULL
+);
+
+-- Populate Orders table
+INSERT INTO Orders_2NF
+SELECT DISTINCT OrderID, CustomerName
+FROM OrderDetails;
+
+-- Create OrderProducts table (full dependency on composite key)
+CREATE TABLE OrderProducts_2NF (
+    OrderID INT,
+    Product VARCHAR(50),
+    Quantity INT,
+    PRIMARY KEY (OrderID, Product),
+    FOREIGN KEY (OrderID) REFERENCES Orders_2NF(OrderID)
+);
+
+-- Populate OrderProducts table
+INSERT INTO OrderProducts_2NF
+SELECT OrderID, Product, Quantity
+FROM OrderDetails;
+
+-- Final schema meets 2NF requirements:
+-- Orders_2NF(OrderID PK, CustomerName)
+-- OrderProducts_2NF(OrderID PK/FK, Product PK, Quantity)
